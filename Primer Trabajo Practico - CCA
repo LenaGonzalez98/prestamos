@@ -60,9 +60,9 @@ t.amortal <- function(C,i,n) {
   for (k in 1:n){
     A[k]   <- C/n
     A[k+1] <- C/n
-    P[k+1] <- I[k+1] + A[k]
     SF[k+1]<- SF[k] - A[k]
     I[k+1] <- SF[k+1]*i
+    P[k+1] <- I[k+1] + A[k]
   }
   
   d=cbind(round(P,digits = 2),round(A,digits = 2),round(SF,digits = 2),round(I,digits = 2))
