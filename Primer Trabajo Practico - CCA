@@ -1,1 +1,335 @@
+---
+title: "Ejercicio 2"
+author: "Gentile, Gregorio - González, Malena"
+date: "31/10/2021"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+
+getwd()
+Ej2= read.csv2("retail_data_short - retail_data_short.csv", header=T, sep=",", dec=".")
+```
+
+
+
+  Obtengo el mejor cliente por país. Interpreto "mejor cliente" como, el que mayor cantidad de dinero gasta en la compra de productos.
+```{r}
+MCP<-Ej2 %>%
+  drop_na()%>%
+  group_by(CustomerID, Country) %>%
+  summarise(Total_PxQ = sum(UnitPrice*Quantity, na.rm = T))%>%
+  arrange( -Total_PxQ)
+
+MCP[!duplicated(MCP$Country),]%>%
+  View()
+
+ggplot(MCP[!duplicated(MCP$Country),])+ 
+  geom_point(mapping = aes(x = CustomerID, y = Country, colour=Country))+
+  labs(y="País", x="Nº de Cliente",
+       title="Mejor Cliente por País")
+```
+
+
+
+  Obtengo los 10 mejores clientes a nivel global.
+```{r}
+MCP[1:10,]
+
+    ggplot(MCP[1:10,])+ 
+      geom_point(mapping = aes(x = Country, y = CustomerID, colour=Total_PxQ))+
+      labs(y="Nº de Cliente", x="País",
+           title="Mejores 10 Clientes a Nivel Global")
+```
+
+
+  Si se hace la búsqueda sin retirar los ID de los clientes que no están registrados, podemos ver que la suma total asociada a ellos, supera al mejor cliente actual. Esto puede estar explicado por el amplio volumen de transacciones que no han sido registradas con un ID de cliente asociado.
+
+
+
+  Obtengo el país con mejores ventas. Interpreto "mejores ventas", como las que suman el mayor monto ingresado por ventas.
+```{r}
+ MV<-Ej2 %>%
+    group_by(Country) %>%
+    summarise(Total_PxQ = sum(UnitPrice*Quantity, na.rm = T))%>%
+    arrange( -Total_PxQ)%>%
+    slice_max(Total_PxQ, n = 1)
+   
+  ggplot(MV)+ 
+    geom_col(mapping = aes(x = Country, y = Total_PxQ, fill=Total_PxQ))+
+    labs(y="Total Ventas", x="País",
+         title="País con Mejores Ventas")
+```
+
+
+
+  Obtengo el artículo más vendido a nivel global, medido en cantidades que egresan.
+```{r}
+PMVG<-Ej2%>%
+    filter(Quantity>0)%>%
+    group_by(StockCode,Description)%>%
+    summarise(Cantidad=sum(Quantity))%>%
+    arrange( -Cantidad)
+
+  PMVG[1,]
+   
+  ggplot(PMVG[1,])+ 
+    geom_col(mapping = aes(x = Description, y = Cantidad, fill=Cantidad))+
+    labs(y="Total Ventas", x="Producto",
+         title="Producto Más Vendido a Nivel Global")
+```
+
+
+
+  Obtengo el artículo más vendido por país.
+```{r}
+PMVP<-Ej2 %>%
+      filter(Quantity>0)%>%
+      group_by(StockCode,Description, Country)%>%
+      summarise(Cantidad=sum(Quantity))%>%
+      arrange( -Cantidad)
+
+    PMVP[!duplicated(PMVP$Country),]%>%
+      View()
+    
+    ggplot(PMVP[!duplicated(PMVP$Country),])+ 
+      geom_point(mapping = aes(x = StockCode, y = Country, colour=Description))+
+      labs(y="País", x="Producto",
+           title="Producto Más Vendido Por País")
+```
+
+
+
+  Obtengo el artículo menos vendido a nivel global, medido en cantidades que egresan.
+```{r}
+AMVG<-Ej2%>%
+    filter(Quantity>0)%>%
+    group_by(StockCode,Description)%>%
+    summarise(Cantidad=sum(Quantity))%>%
+    arrange( Cantidad)
+
+  AMVG[1,]
+  
+  ggplot(AMVG[1,])+ 
+    geom_col(mapping = aes(x = Description, y = Cantidad, fill=Cantidad))+
+    labs(y="Cantidad de Ventas", x="Artículo",
+         title="Artículo Menos Vendido a Nivel Global")
+```
+
+
+
+  Obtengo el artículo menos vendido por país.
+```{r}
+ AMVP<-Ej2%>%
+        filter(Quantity>0)%>%
+        group_by(StockCode,Description,Country)%>%
+        summarise(Cantidad=sum(Quantity))%>%
+        arrange( Cantidad)
+      
+      AMVP[!duplicated(AMVP$Country),]%>%
+        View()
+      
+      ggplot(AMVP[!duplicated(AMVP$Country),])+ 
+        geom_point(mapping = aes(x = StockCode, y = Country, colour=Description))+
+        labs(y="País", x="Artículo",
+             title="Artículo Menos Vendido Por País")
+```
+
+
+
+  Obtengo el artículo más devuelto, entendiendo devoluciones como las cantidades que figuran en negativo.
+```{r ,echo=FALSE, message=FALSE, warning=FALSE}
+AMD<-Ej2%>%
+    filter(Quantity<0)%>%
+    group_by(StockCode,Description)%>%
+    summarise(Cantidad=sum(Quantity))%>%
+    arrange( Cantidad)
+  
+  AMD[1,]
+
+  ggplot(AMD[1,])+ 
+    geom_col(mapping = aes(x = Description, y = -Cantidad,fill=Cantidad))+
+    labs(y="Cantidad de Devoluciones", x="Artículo",
+         title="Artículo Más Devuelto")
+```
+
+
+  Me parece importante destacar que el artículo más devuelto, también es el artículo más vendido. Y dicha compra y devolución se hicieron en una sola operación.
+
+
+
+  Obtengo el artículo con mayor monto devuelto.
+```{r}
+AMMD<-Ej2%>%
+    filter(Quantity<0)%>%
+    group_by(StockCode,Description)%>%
+    summarise(Total_PxQ = sum(UnitPrice*Quantity, na.rm = T),Cantidad=sum(Quantity),)%>%
+    arrange( Total_PxQ)
+  
+  AMMD[1,]
+  
+  ggplot(AMMD[1,])+ 
+    geom_col(mapping = aes(x = Description, y = -Total_PxQ, fill=Total_PxQ))+
+    labs(y="Monto de Devoluciones", x="Artículo",
+         title="Artículo con Mayor Monto Devuelto")
+```
+
+
+  El artículo con mayor monto devuelto coincide con ser el de la mayor cantidad de devoluciones. Como también con mayor cantidad de ventas.
+
+
+  Obtengo los 10 artículos más caros.
+```{r}
+TDAMC<-Ej2%>%
+    group_by(StockCode,Description, UnitPrice)%>%
+    select(StockCode,Description, UnitPrice)%>%
+    arrange(-UnitPrice)
+                        ##hay art con dist valor, pero misma cosa. Mepregunto
+  TTDAMC<-TDAMC[!duplicated(TDAMC$StockCode),]
+    
+  TTDAMC[1:10,]  ##-->10 art mas caros, sin repetir art.Vale aclarar, que 
+                 ##   un mismo art. puede tener mas de un precio.
+  
+  ggplot(TTDAMC[1:10,])+ 
+    geom_col(mapping = aes(x = StockCode, y = UnitPrice,fill=Description))+
+    labs(y="Precio Unitario", x="Artículo",
+         title="Top 10 Artículos Más Caros")
+```
+
+
+  El resultado que obtengo son los 10 artículos distintos más caros. Se da el caso en repetidas ocasiones, que un mismo artículo tiene distintos precios. En este análisis consideré más valioso la variedad de artículos.
+
+
+
+  Obtengo el artículo que genera más ingresos a nivel global.
+```{r}
+AGMIG<-Ej2%>%
+    filter(Quantity>0)%>%
+    group_by(StockCode,Description)%>%
+    summarise(Cantidad=sum(Quantity),Total_PxQ = sum(UnitPrice*Quantity, na.rm = T))%>%
+    arrange( -Total_PxQ)
+  
+  AGMIG[1,]
+  
+  ggplot(AGMIG[1,])+ 
+    geom_col(mapping = aes(x = Description, y = Total_PxQ,fill=Total_PxQ))+
+    labs(y="Volumen", x="Artículo",
+         title="Artículo que Genera Mayor Ingreso a Nivel Global")
+```
+
+
+  Este artículo es el mismo que también tiene la mayor cantidad de ventas, la mayor cantidad de devoluciones y el mayor monto devuelto.
+  
+  
+  
+  Obtengo el artículo que genera más ingresos por país.
+```{r}
+AGMIP<-Ej2%>%
+    filter(Quantity>0)%>%
+    group_by(StockCode,Description, Country)%>%
+    summarise(Cantidad=sum(Quantity),Total_PxQ = sum(UnitPrice*Quantity, na.rm = T))%>%
+    arrange( -Total_PxQ)
+  
+  AGMIP[!duplicated(AGMIP$Country),]%>%
+    View()
+  
+  ggplot(AGMIP[!duplicated(AGMIP$Country),])+ 
+    geom_col(mapping = aes(y = Country, x = Total_PxQ,fill=Description))+
+    labs(y="País", x="Artículo",
+         title="Artículo que Genera Mayor Ingreso por País")
+```
+
+
+
+  Obtengo la distribución de las ventas a lo largo del día medido en cantidades.
+```{r}
+DVVLDC<-Ej2%>%
+    filter(Quantity>0)%>%
+    mutate(Fecha=as_datetime(InvoiceDate)) %>% 
+    select(-InvoiceDate,-InvoiceNo,-Country,-CustomerID) ##volumen en ctades.
+
+  ggplot(DVVLDC)+
+    geom_point(mapping = aes(x = Fecha, y = Quantity,colour=Quantity))+
+    labs(y="Cantidades", x="Fecha",
+         title="Distrib. de Vol. de Ventas a lo Largo del Día en Ctdades")+
+    coord_cartesian(ylim = c(0,1500)) 
+
+  ggplot(DVVLDC)+
+    geom_point(mapping = aes(x = Fecha, y = Quantity,colour=Quantity))+
+    labs(y="Cantidades", x="Fecha",
+         title="Distrib. de Vol. de Ventas a lo Largo del Día en Ctdades")
+                                         
+```
+
+
+  En este caso realizo dos gráficos. En el primero excluyo el valor más alto de la tabla, para tener una dimensión más cercana en los valores más bajos, que son los más abundantes. En el segundo, el valor más alto de la tabla está incluido, para así poder generar un impacto visual y tomar idea del efecto que este artículo genera en las ventas.
+
+
+
+  Obtengo la distribución de las ventas a lo largo del día medido en $.
+```{r}
+DVVLDP<-DVVLDC %>%      ##volumen en pesos
+    filter(Quantity>0)%>%
+    group_by(StockCode,Description,Fecha) %>% 
+    summarise(Total_PxQ = UnitPrice*Quantity) %>% 
+    arrange(Fecha)                               
+  
+  ggplot(DVVLDP)+ 
+    geom_point(mapping = aes(x = Fecha, y = Total_PxQ,colour=Total_PxQ))+
+    labs(y="$", x="Fecha",
+         title="Distrib. de Vol. de Ventas a lo Largo del Día en $")+
+    coord_cartesian(ylim = c(0,4000))
+  
+  ggplot(DVVLDP)+ 
+    geom_point(mapping = aes(x = Fecha, y = Total_PxQ,colour=Total_PxQ))+
+    labs(y="$", x="Fecha",
+         title="Distrib. de Vol. de Ventas a lo Largo del Día en $")
+```
+
+
+  Aquí vuelvo a realizar dos gráficos. Ambos con el mismo propósito que en el punto anterior.
+
+  
+  1)¿El precio de un producto influye en en el ratio de devoluciones del mismo?
+```{r}
+T<-Ej2%>%
+    group_by(StockCode,Description, UnitPrice, Quantity)%>%
+    select(StockCode,Description, UnitPrice)%>%
+    arrange(-UnitPrice)
+```
+  
+  
+  A partir de lo que se puede observar en la tabla no hay una relación directa entre precios y devoluciones. Hay dos casos que llaman la atención.
+  El primero es que se han devuelto dos "AMANZON FEE" y estos artículos son los que poseen el valor unitario más elevado. Pero, no se observa un comportamiento de devoluciones similar en el resto de los artículos "caros".
+  El segundo es que la mayor cantidad de devoluciones se da en el segmento con valor unitario igual a cero. Aquí, los artículos no tienen una correcta descripción y se presentan problemas con identificar los ID de los consumidores correctamente. Pareciera que las cantidades registradas como negativas no son devoluciones, sino registros de productos defectuosos o perdidos.
+
+
+
+2)¿Qué país tiene la mayor cantidad de compras por día?
+```{r}
+DC<-Ej2%>%
+    filter(Quantity>0)%>%
+    mutate(Fecha=as_datetime(InvoiceDate)) %>% 
+    select(-InvoiceDate,-InvoiceNo,-CustomerID)
+  
+  ST<-DC%>%
+    filter(Quantity>0)%>%
+    group_by(Country,Fecha) %>% 
+    summarise(Cantidad=sum(Quantity)) %>% 
+    arrange(-Cantidad)
+```
+
+
+  En la tabla generada se puede ver la cantidad agregada de compras por país durante el tiempo. El Reino Unido es quien lidera la tabla ampliamente en cantidad de compra de productos. Esto es razonable, ya que también es el país con mejores ventas.
+  
+  
+3)¿Qué usuario tiene el menor tiempo agregado entre compra y compra?
+
+  Para hacer este análisis sería pertinente generar una búsqueda que sume la cantidad de tiempo que pasa cada usuario sin comprar. Es decir, restarle a la fecha(t) la fecha(t-1) y sumarlo.
+  
+
+4)¿Que país tiene el mayor tiempo promedio de devolución por usuario entre compra y compra?
 
